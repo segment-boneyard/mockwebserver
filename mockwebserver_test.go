@@ -16,9 +16,6 @@ func TestMockWebServer(t *testing.T) {
 	url := s.Start()
 	defer s.Stop()
 
-	assert.Equal(t, 0, len(s.Requests))
-	assert.Equal(t, 0, len(s.Handlers))
-
 	s.Enqueue(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "https://giphy.com/gifs/sloth-WVLZLE4yGCQFi", http.StatusInternalServerError)
 	})
@@ -26,24 +23,15 @@ func TestMockWebServer(t *testing.T) {
 		fmt.Fprintln(w, "This is the response you are looking for.")
 	})
 
-	assert.Equal(t, 0, len(s.Requests))
-	assert.Equal(t, 2, len(s.Handlers))
-
 	{
 		resp, err := http.Get(url)
 		assert.Equal(t, nil, err)
 		assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 		assertBodyEqual(t, resp, "https://giphy.com/gifs/sloth-WVLZLE4yGCQFi\n")
 
-		assert.Equal(t, 1, len(s.Requests))
-		assert.Equal(t, 1, len(s.Handlers))
-
 		request := s.TakeRequest()
 		assert.Equal(t, "/", request.URL.String())
 	}
-
-	assert.Equal(t, 0, len(s.Requests))
-	assert.Equal(t, 1, len(s.Handlers))
 
 	{
 		resp, err := http.Get(url + "/foo")
@@ -51,15 +39,10 @@ func TestMockWebServer(t *testing.T) {
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 		assertBodyEqual(t, resp, "This is the response you are looking for.\n")
 
-		assert.Equal(t, len(s.Requests), 1)
-		assert.Equal(t, len(s.Handlers), 0)
-
 		request := s.TakeRequest()
 		assert.Equal(t, "/foo", request.URL.String())
 	}
 
-	assert.Equal(t, 0, len(s.Requests))
-	assert.Equal(t, 0, len(s.Handlers))
 }
 
 func TestNoRegisteredHandlers(t *testing.T) {

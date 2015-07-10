@@ -12,9 +12,9 @@ import (
 // specify which responses to return and then verify that requests were made as
 // expected.
 type Server struct {
-	TestServer *httptest.Server
-	Handlers   []http.HandlerFunc
-	Requests   []*http.Request
+	testServer *httptest.Server
+	handlers   []http.HandlerFunc
+	requests   []*http.Request
 	sync.Mutex
 }
 
@@ -26,14 +26,14 @@ func New() *Server {
 // Start starts the server. The caller should call Stop when finished, to shut
 // it down.
 func (s *Server) Start() string {
-	s.TestServer = httptest.NewServer(s)
-	return s.TestServer.URL
+	s.testServer = httptest.NewServer(s)
+	return s.testServer.URL
 }
 
 // Stop shuts down the server and blocks until all outstanding requests on this
 // server have completed.
 func (s *Server) Stop() {
-	s.TestServer.Close()
+	s.testServer.Close()
 }
 
 // ServeHTTP satisifies the http.Handler interface
@@ -41,15 +41,15 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.Lock()
 	defer s.Unlock()
 
-	s.Requests = append(s.Requests, r)
+	s.requests = append(s.requests, r)
 
-	if len(s.Handlers) == 0 {
+	if len(s.handlers) == 0 {
 		w.WriteHeader(200)
 		return
 	}
 
-	h := s.Handlers[0]
-	s.Handlers = s.Handlers[1:]
+	h := s.handlers[0]
+	s.handlers = s.handlers[1:]
 	h.ServeHTTP(w, r)
 }
 
@@ -60,20 +60,20 @@ func (s *Server) Enqueue(h http.HandlerFunc) {
 	s.Lock()
 	defer s.Unlock()
 
-	s.Handlers = append(s.Handlers, h)
+	s.handlers = append(s.handlers, h)
 }
 
-// TakeRequest gets the first HTTP request, removes it, and returns it.
-// Callers should use this to verify the request was sent as intended.
+// TakeRequest gets the first HTTP request, removes it, and returns it. Callers
+// should use this to verify the request was sent as intended.
 func (s *Server) TakeRequest() *http.Request {
 	s.Lock()
 	defer s.Unlock()
 
-	if len(s.Requests) == 0 {
+	if len(s.requests) == 0 {
 		return nil
 	}
 
-	r := s.Requests[0]
-	s.Requests = s.Requests[1:]
+	r := s.requests[0]
+	s.requests = s.requests[1:]
 	return r
 }
