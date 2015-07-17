@@ -72,15 +72,10 @@ func (s *Server) TakeRequest() *http.Request {
 // time if necessary), removes it, and returns it. Callers should use this to
 // verify the request was sent as intended.
 func (s *Server) TakeRequestWithTimeout(duration time.Duration) *http.Request {
-	timeout := make(chan bool, 1)
-	go func() {
-		time.Sleep(duration)
-		timeout <- true
-	}()
 	select {
 	case r := <-s.requests:
 		return r
-	case <-timeout:
+	case <-time.After(duration):
 		return nil
 	}
 }
