@@ -7,9 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/segmentio/mockwebserver"
-
 	"github.com/bmizerany/assert"
+	"github.com/segmentio/mockwebserver"
 )
 
 func TestMockWebServer(t *testing.T) {

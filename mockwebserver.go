@@ -5,7 +5,6 @@ package mockwebserver
 import (
 	"net/http"
 	"net/http/httptest"
-	"sync"
 	"time"
 )
 
@@ -14,14 +13,14 @@ import (
 // expected.
 type Server struct {
 	testServer *httptest.Server
-	handlers   []http.HandlerFunc
+	handlers   chan http.HandlerFunc
 	requests   chan *http.Request
-	sync.Mutex
 }
 
 // New returns a new mock web server.
 func New() *Server {
 	return &Server{
+		handlers: make(chan http.HandlerFunc),
 		requests: make(chan *http.Request),
 	}
 }
@@ -41,31 +40,25 @@ func (s *Server) Stop() {
 
 // ServeHTTP satisifies the http.Handler interface
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	s.Lock()
-	defer s.Unlock()
-
 	go func() {
 		s.requests <- r
 	}()
 
-	if len(s.handlers) == 0 {
+	select {
+	case h := <-s.handlers:
+		h.ServeHTTP(w, r)
+	default:
 		w.WriteHeader(200)
-		return
 	}
-
-	h := s.handlers[0]
-	s.handlers = s.handlers[1:]
-	h.ServeHTTP(w, r)
 }
 
 // Enqueue adds an `http.HandlerFunc` that will be executed to a request made in
 // sequence. The first request is served by the first enqueued handler; the
 // second request by the second enqueued handler; and so on.
 func (s *Server) Enqueue(h http.HandlerFunc) {
-	s.Lock()
-	defer s.Unlock()
-
-	s.handlers = append(s.handlers, h)
+	go func() {
+		s.handlers <- h
+	}()
 }
 
 // TakeRequest gets the first HTTP request, removes it, and returns it. Callers
