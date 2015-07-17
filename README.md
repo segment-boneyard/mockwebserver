@@ -1,4 +1,4 @@
-# MockWebServer
+# MockWebServer [![GoDoc](https://godoc.org/github.com/segmentio/mockwebserver?status.svg)](https://godoc.org/github.com/segmentio/mockwebserver)
 
 `MockWebServer` is a scriptable web server for testing HTTP clients.
 
@@ -7,6 +7,7 @@ This library makes it easy to test that your app Does The Right Thing when it ma
 Because it exercises your full HTTP stack, you can be confident that you're testing everything. You can even copy & paste HTTP responses from your real web server to create representative test cases. Or test that your code survives in awkward-to-reproduce situations like 500 errors or slow-loading responses.
 
 Inspired by [`MockWebServer` in OkHttp](https://github.com/square/okhttp/tree/master/mockwebserver).
+
 
 ## Example
 
@@ -48,55 +49,6 @@ request := s.TakeRequest()
 assert.Equal(t, request.URL.String(), "/foo")
 ```
 
-## Usage
-
-#### type Server
-
-```go
-type Server struct {
-    TestServer *httptest.Server
-    Handlers   []http.HandlerFunc
-    Requests   []*http.Request
-    sync.Mutex
-}
-```
-
-A scriptable web server.
-
-#### func  New
-
-```go
-func New() *Server
-```
-New returns a new mock web server.
-
-#### func (*Server) Start
-
-```go
-func (c *Server) Start() string
-```
-Start the mock web server and return the URL it is running on.
-
-#### func (*Server) Stop
-
-```go
-func (c *Server) Stop()
-```
-Stop the server.
-
-#### func (*Server) Enqueue
-
-```go
-func (s *Server) Enqueue(h http.HandlerFunc)
-```
-Enqueue a `http.HandlerFunc` that will be executed to a request made in sequence. The first request is served by the first enqueued handler; the second request by the second enqueued handler; and so on.
-
-#### func (*Server) TakeRequest
-
-```go
-func (s *Server) TakeRequest() *http.Request
-```
-Takes the first HTTP request, removes it, and returns it. Callers should use this to verify the request was sent as intended.
 
 # License
 
