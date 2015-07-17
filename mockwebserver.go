@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"sync"
+	"time"
 )
 
 // A scriptable server. It wraps an httptest.Server and lets you lets you
@@ -14,13 +15,15 @@ import (
 type Server struct {
 	testServer *httptest.Server
 	handlers   []http.HandlerFunc
-	requests   []*http.Request
+	requests   chan *http.Request
 	sync.Mutex
 }
 
 // New returns a new mock web server.
 func New() *Server {
-	return &Server{}
+	return &Server{
+		requests: make(chan *http.Request),
+	}
 }
 
 // Start starts the server. The caller should call Stop when finished, to shut
@@ -41,7 +44,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.Lock()
 	defer s.Unlock()
 
-	s.requests = append(s.requests, r)
+	go func() {
+		s.requests <- r
+	}()
 
 	if len(s.handlers) == 0 {
 		w.WriteHeader(200)
@@ -64,16 +69,25 @@ func (s *Server) Enqueue(h http.HandlerFunc) {
 }
 
 // TakeRequest gets the first HTTP request, removes it, and returns it. Callers
-// should use this to verify the request was sent as intended.
+// should use this to verify the request was sent as intended. This method will
+// block until the request is available, possibly forever.
 func (s *Server) TakeRequest() *http.Request {
-	s.Lock()
-	defer s.Unlock()
+	return <-s.requests
+}
 
-	if len(s.requests) == 0 {
+// TakeRequest gets the first HTTP request (waiting up to the specified wait
+// time if necessary), removes it, and returns it. Callers should use this to
+// verify the request was sent as intended.
+func (s *Server) TakeRequestWithTimeout(duration time.Duration) *http.Request {
+	timeout := make(chan bool, 1)
+	go func() {
+		time.Sleep(duration)
+		timeout <- true
+	}()
+	select {
+	case r := <-s.requests:
+		return r
+	case <-timeout:
 		return nil
 	}
-
-	r := s.requests[0]
-	s.requests = s.requests[1:]
-	return r
 }
