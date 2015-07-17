@@ -5,10 +5,10 @@ import (
 	"io/ioutil"
 	"net/http"
 	"testing"
-
-	"github.com/segmentio/mockwebserver"
+	"time"
 
 	"github.com/bmizerany/assert"
+	"github.com/segmentio/mockwebserver"
 )
 
 func TestMockWebServer(t *testing.T) {
@@ -39,7 +39,7 @@ func TestMockWebServer(t *testing.T) {
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 		assertBodyEqual(t, resp, "This is the response you are looking for.\n")
 
-		request := s.TakeRequest()
+		request := s.TakeRequestWithTimeout(1 * time.Second)
 		assert.Equal(t, "/foo", request.URL.String())
 	}
 
@@ -59,12 +59,12 @@ func TestNoRegisteredHandlers(t *testing.T) {
 	assert.Equal(t, "/", request.URL.String())
 }
 
-func TestNoRecordedResponses(t *testing.T) {
+func TestNoRecordedResponsesWithTimeout(t *testing.T) {
 	s := mockwebserver.New()
 	s.Start()
 	defer s.Stop()
 
-	request := s.TakeRequest()
+	request := s.TakeRequestWithTimeout(1 * time.Second)
 	if request != nil {
 		t.Errorf("request != nil")
 	}
@@ -100,6 +100,7 @@ func ExampleMockWebServer() {
 }
 
 func assertBodyEqual(t *testing.T, resp *http.Response, exp string) {
+	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		t.Errorf("%s", err.Error())
